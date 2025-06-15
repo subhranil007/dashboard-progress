@@ -3,453 +3,298 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive 50-Day Study Dashboard</title>
+    <title>My 42-Day Data Learning Journey</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Chosen Palette: Warm Neutrals - A calming palette using beige, slate gray, and muted teal accents to create a focused and supportive learning environment. -->
     <!-- 
-      Application Structure Plan: A single-page dashboard design was chosen to provide a comprehensive yet uncluttered view of the 50-day study plan. The structure facilitates usability through:
-      1. An "Overview" section with stat cards and a progress bar for at-a-glance status checks.
-      2. A "Topic Focus" section with an interactive donut chart and filter buttons, allowing users to analyze time allocation and drill down into specific subjects. This provides a non-linear way to explore the plan.
-      3. A "Weekly Schedule" section using a tabbed interface. This breaks the dense 50-day timeline into manageable weekly chunks, reducing cognitive load. Day cards within each week are expandable, hiding detailed tasks until requested to keep the interface clean. This structure was selected to support both high-level planning and detailed daily tracking within a single, cohesive view.
+        Chosen Palette: Soothing Neutrals & Teal
+        Application Structure Plan: The application uses a timeline-based dashboard structure. A grid of 42 cards provides a high-level overview of the entire plan, making it easy to see the full scope of the journey. Key interactions include filtering the timeline by learning phase (Foundations, Data Science, etc.) and clicking a day to view its detailed schedule in a modal window. This hierarchical structure was chosen to prevent initial information overload while allowing for easy access to specifics. A progress bar and completion checkboxes are included to gamify the experience and provide clear visual feedback, enhancing user engagement and motivation.
+        Visualization & Content Choices: The primary visualization is the interactive timeline grid itself, which organizes the temporal data (days) and categorical data (topics). Goal: Organize/Inform. Method: HTML/CSS Grid. Interaction: Click to view details. Justification: Most intuitive way to represent a time-based plan. A secondary visualization is the dynamic progress bar. Goal: Inform/Engage. Method: JS-updated HTML div. Interaction: Updates on day completion. Justification: Provides constant motivational feedback. Daily details are presented in a structured list within a modal, using Unicode icons for scannability. Goal: Inform. Method: HTML list. Justification: Clear and concise presentation of detailed tasks.
+        CONFIRMATION: NO SVG graphics used. NO Mermaid JS used.
     -->
-    <!-- 
-      Visualization & Content Choices:
-      - Report Info: Overall Progress. Goal: Inform. Viz/Method: HTML/CSS Progress Bar. Interaction: Updates as days are marked complete. Justification: Provides instant visual feedback on completion. Library: HTML/CSS.
-      - Report Info: Key Metrics (Total Days, Hours, etc.). Goal: Inform. Viz/Method: HTML "Stat Cards". Interaction: Static. Justification: Summarizes the plan's scope. Library: HTML/CSS.
-      - Report Info: Time allocation per topic. Goal: Compare/Analyze. Viz/Method: Donut Chart. Interaction: Hover tooltips show hours per topic. Justification: Offers a quick, visual comparison of effort distribution. Library: Chart.js (Canvas).
-      - Report Info: Full 50-day schedule details. Goal: Organize/Explore. Viz/Method: Interactive HTML Cards in a tabbed weekly grid. Interaction: Week tabs filter days; day cards expand to show details; checkboxes mark completion. Justification: Manages complexity by chunking information weekly and hiding details by default, promoting a focused user experience. Library: Vanilla JS, HTML/CSS.
-    -->
-    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #FDFBF7; /* Warm Beige Background */
+            background-color: #f8fafc; /* slate-50 */
         }
-        .stat-card {
-            background-color: #FFFFFF;
-            border: 1px solid #E5E7EB;
-        }
-        .tab-active {
-            background-color: #0d9488; /* Muted Teal */
-            color: #FFFFFF;
-        }
-        .tab-inactive {
-            background-color: #FFFFFF;
-            color: #374151; /* Slate Gray */
-            border: 1px solid #D1D5DB;
-        }
-        .day-card {
-            background-color: #FFFFFF;
-            border: 1px solid #E5E7EB;
-            transition: all 0.3s ease;
+        .phase-btn.active {
+            background-color: #0d9488; /* teal-600 */
+            color: white;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
         }
         .day-card.completed {
-            background-color: #F0FDF4;
-            border-left: 4px solid #22C55E;
+            background-color: #e2e8f0; /* slate-200 */
+            opacity: 0.7;
+            border-color: #0d9488; /* teal-600 */
         }
-        .day-card-details {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.5s ease-in-out;
+        .day-card.completed .day-title {
+            text-decoration: line-through;
         }
-        .day-card.expanded .day-card-details {
-            max-height: 500px;
+        #modal-backdrop {
+            transition: opacity 0.3s ease-in-out;
         }
-        .chart-container {
-            position: relative;
-            width: 100%;
-            max-width: 400px;
-            margin-left: auto;
-            margin-right: auto;
-            height: 320px;
-            max-height: 400px;
-        }
-        @media (min-width: 768px) {
-            .chart-container {
-                height: 350px;
-            }
-        }
-        .btn-filter {
-            transition: all 0.2s ease;
-        }
-        .btn-filter.active {
-            background-color: #0d9488;
-            color: white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .btn-filter.inactive {
-             background-color: #FFFFFF;
-             color: #374151;
-             border: 1px solid #D1D5DB;
+        #modal-panel {
+            transition: all 0.3s ease-in-out;
         }
     </style>
 </head>
-<body class="text-gray-800">
+<body class="text-slate-800">
 
-    <div class="container mx-auto p-4 md:p-8">
+    <div id="app" class="container mx-auto p-4 sm:p-6 lg:p-8">
         
         <header class="text-center mb-8">
-            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">50-Day Tech Skilling Dashboard</h1>
-            <p class="text-md text-gray-600 mt-2">Your interactive guide to mastering Data Science and Engineering.</p>
+            <h1 class="text-3xl sm:text-4xl font-bold text-slate-900">My 42-Day Data Learning Journey</h1>
+            <p class="mt-2 text-lg text-slate-600">Your interactive guide to mastering Data Analytics & Engineering.</p>
         </header>
 
-        <main>
-            <!-- Overview Section -->
-            <section id="overview" class="mb-8">
-                <h2 class="text-2xl font-bold text-gray-900 mb-4">Plan Overview</h2>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                    <div class="stat-card p-4 rounded-lg shadow-sm text-center">
-                        <p class="text-sm text-gray-500">Total Duration</p>
-                        <p class="text-2xl font-bold">50 Days</p>
-                    </div>
-                    <div class="stat-card p-4 rounded-lg shadow-sm text-center">
-                        <p class="text-sm text-gray-500">Total Content</p>
-                        <p id="total-hours" class="text-2xl font-bold">139.5 Hours</p>
-                    </div>
-                    <div class="stat-card p-4 rounded-lg shadow-sm text-center">
-                        <p class="text-sm text-gray-500">Days Completed</p>
-                        <p id="days-completed" class="text-2xl font-bold">0</p>
-                    </div>
-                    <div class="stat-card p-4 rounded-lg shadow-sm text-center">
-                        <p class="text-sm text-gray-500">Avg. New Content/Day</p>
-                        <p class="text-2xl font-bold">~2.8 Hours</p>
-                    </div>
-                </div>
-                <div>
-                    <div class="flex justify-between mb-1">
-                        <span class="text-base font-medium text-teal-700">Progress</span>
-                        <span id="progress-percent" class="text-sm font-medium text-teal-700">0%</span>
-                    </div>
-                    <div class="w-full bg-gray-200 rounded-full h-2.5">
-                        <div id="progress-bar" class="bg-teal-600 h-2.5 rounded-full" style="width: 0%"></div>
-                    </div>
-                </div>
-            </section>
+        <div class="w-full bg-slate-200 rounded-full h-4 mb-4 overflow-hidden">
+            <div id="progress-bar" class="bg-teal-500 h-4 rounded-full transition-all duration-500" style="width: 0%"></div>
+        </div>
+        <div id="progress-text" class="text-center font-semibold text-teal-600 mb-8">0 / 42 Days Complete</div>
 
-            <!-- Topic Focus Section -->
-            <section id="topic-focus" class="mb-8 p-6 bg-white rounded-lg shadow-sm border border-gray-200">
-                <h2 class="text-2xl font-bold text-gray-900 mb-2">Topic Focus</h2>
-                 <p class="text-gray-600 mb-6 text-center md:text-left">Visualize how your study time is distributed across key subjects. Use the filters to isolate days related to a specific topic in the weekly schedule below.</p>
-                <div class="flex flex-col md:flex-row gap-8 items-center">
-                    <div class="w-full md:w-1/2">
-                         <div id="topic-filters" class="flex flex-wrap justify-center gap-2 mb-6">
-                            </div>
-                        <div class="chart-container">
-                            <canvas id="topicChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="w-full md:w-1/2">
-                       <ul id="topic-details" class="space-y-3">
-                           <!-- Details will be populated by JS -->
-                       </ul>
-                    </div>
-                </div>
-            </section>
+        <div id="filters" class="flex flex-wrap justify-center gap-2 mb-8">
+            <button data-phase="all" class="phase-btn active px-4 py-2 bg-white text-slate-700 rounded-full shadow-sm hover:bg-teal-500 hover:text-white transition-colors">All Phases</button>
+            <button data-phase="1" class="phase-btn px-4 py-2 bg-white text-slate-700 rounded-full shadow-sm hover:bg-teal-500 hover:text-white transition-colors">Phase 1: Foundations</button>
+            <button data-phase="2" class="phase-btn px-4 py-2 bg-white text-slate-700 rounded-full shadow-sm hover:bg-teal-500 hover:text-white transition-colors">Phase 2: Data Science</button>
+            <button data-phase="3" class="phase-btn px-4 py-2 bg-white text-slate-700 rounded-full shadow-sm hover:bg-teal-500 hover:text-white transition-colors">Phase 3: Data Engineering</button>
+            <button data-phase="4" class="phase-btn px-4 py-2 bg-white text-slate-700 rounded-full shadow-sm hover:bg-teal-500 hover:text-white transition-colors">Phase 4: Consolidation</button>
+        </div>
 
-            <!-- Weekly Schedule Section -->
-            <section id="weekly-schedule">
-                <h2 class="text-2xl font-bold text-gray-900 mb-2">Weekly Schedule</h2>
-                <p class="text-gray-600 mb-4">Navigate your 50-day plan week by week. Click on any day to see the detailed tasks and check it off once completed.</p>
-                <div id="week-tabs" class="flex flex-wrap gap-2 mb-4">
-                    <!-- Week tabs will be populated by JS -->
-                </div>
-                <div id="day-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    <!-- Day cards will be populated by JS -->
-                </div>
-            </section>
+        <main id="timeline-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4">
         </main>
     </div>
 
+    <div id="modal-container" class="fixed inset-0 z-50 hidden">
+        <div id="modal-backdrop" class="fixed inset-0 bg-black bg-opacity-50"></div>
+        <div class="relative flex items-center justify-center min-h-screen p-4">
+            <div id="modal-panel" class="bg-white rounded-xl shadow-2xl w-full max-w-2xl transform opacity-0 scale-95">
+                <div class="p-6">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h2 id="modal-title" class="text-2xl font-bold text-slate-900"></h2>
+                            <p id="modal-subtitle" class="text-md text-slate-500"></p>
+                        </div>
+                        <button id="close-modal-btn" class="text-slate-400 hover:text-slate-600">&times;</button>
+                    </div>
+                    <div id="modal-content" class="mt-4 prose max-w-none text-slate-700"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const scheduleData = [
-                // Power BI First (29 hours over ~6 days)
-                { week: 1, day: 1, title: 'Power BI Intro & Formatting', hours: 4, topic: 'Power BI', details: 'PL-300 Power BI (Udemy): Introduction to Power BI Desktop: Installation, Interface, First Visuals. Part 1 Level 2: Formatting Visualizations.', completed: false },
-                { week: 1, day: 2, title: 'Power BI Visuals & Filters', hours: 4, topic: 'Power BI', details: 'PL-300 Power BI (Udemy): Part 1 Level 3: Creating Different Visualizations: Matrices, Bar Charts, Line Charts. Part 1 Level 4: Filters & Slicers.', completed: false },
-                { week: 1, day: 3, title: 'Power BI Advanced Visualization', hours: 4, topic: 'Power BI', details: 'PL-300 Power BI (Udemy): Part 1 Level 4b: Sort, Small Multiples, Bookmarks, Selection Pane. Part 1 Level 4c: Drillthrough, Buttons, Tooltip Pages.', completed: false },
-                { week: 1, day: 4, title: 'Power BI Mapping & KPIs', hours: 4, topic: 'Power BI', details: 'PL-300 Power BI (Udemy): Part 1 Level 5: Other Visualizations, Part 1 Level 6: Mapping. Part 1 Level 7: KPIs, Gauges, Cards.', completed: false },
-                { week: 1, day: 5, title: 'Power Query Transformations (Basic)', hours: 5, topic: 'Power BI', details: 'PL-300 Power BI (Udemy): Part 2: Get and Transform Data (Power Query) - Basic to Intermediate Transformations.', completed: false },
-                { week: 1, day: 6, title: 'Power Query Transformations (Advanced) & M Language', hours: 5, topic: 'Power BI', details: 'PL-300 Power BI (Udemy): Part 2: Get and Transform Data (Power Query) - Advanced Transformations, M Language Basics.', completed: false },
-                { week: 1, day: 7, title: 'Power BI Data Modeling & Relationships', hours: 3, topic: 'Power BI', details: 'PL-300 Power BI (Udemy): Part 3: Refining the Model - Data Modeling, Relationships between Tables.', completed: false },
-                // Azure (10 hours over ~2 days + 4 hours video)
-                { week: 2, day: 8, title: 'Azure Core Data Concepts', hours: 5, topic: 'Azure', details: 'DP-900 (Udemy): Core Data Concepts, Azure Data Services Overview, Relational Data in Azure.', completed: false },
-                { week: 2, day: 9, title: 'Azure Non-Relational & Governance', hours: 5, topic: 'Azure', details: 'DP-900 (Udemy): Azure Non-Relational Data, Analytics Workloads, Data Governance. **Complete DP-900.**', completed: false },
-                { week: 2, day: 10, title: 'Azure Data Factory Course', hours: 4, topic: 'Azure', details: 'YouTube Video: Azure Data Factory Full Course.', completed: false },
-                // SQL (6 hours over ~2 days)
-                { week: 2, day: 11, title: 'SQL Fundamentals 1', hours: 3, topic: 'SQL', details: 'YouTube Video: SQL Fundamentals - Basic Queries, Filtering, Sorting, Aggregation.', completed: false },
-                { week: 2, day: 12, title: 'SQL Fundamentals 2', hours: 3, topic: 'SQL', details: 'YouTube Video: SQL Fundamentals - JOINS, Subqueries, CTEs, Window Functions.', completed: false },
-                // Data Science (31.5 hours over ~7 days)
-                { week: 2, day: 13, title: 'Data Science Intro & Math Fundamentals', hours: 5, topic: 'Data Science', details: 'Part 1: Introduction to Data Science, Disciplines, Techniques, Tools, Careers. Mathematics: Calculus & Linear Algebra Fundamentals.', completed: false },
-                { week: 2, day: 14, title: 'Statistics Foundation', hours: 5, topic: 'Data Science', details: 'Statistics: Probability, Distributions, Hypothesis Testing, Statistical Thinking.', completed: false },
-                { week: 3, day: 15, title: 'Python, NumPy & Pandas Basics', hours: 5, topic: 'Data Science', details: 'Python Crash Course, NumPy Basics, Pandas for Data Loading & Manipulation.', completed: false },
-                { week: 3, day: 16, title: 'Data Preprocessing & Visualization', hours: 5, topic: 'Data Science', details: 'Pandas: Data Preprocessing, Cleaning, Transformation. Data Visualization: Matplotlib & Seaborn.', completed: false },
-                { week: 3, day: 17, title: 'Intro to Machine Learning', hours: 5, topic: 'Data Science', details: 'Machine Learning: Introduction, Linear Regression, Logistic Regression - Theory & Implementation.', completed: false },
-                { week: 3, day: 18, title: 'ML Evaluation & Deep Learning Intro', hours: 6.5, topic: 'Data Science', details: 'Machine Learning: Model Evaluation, Underfitting/Overfitting, Validation. Deep Learning: Neural Networks, TensorFlow Introduction. Apply to Real-life Cases. **Complete Data Science Course.**', completed: false },
-                { week: 3, day: 19, title: 'Data Science Review & Practice', hours: 0, topic: 'Review', details: 'Dedicate this \'study day\' to revisiting challenging topics, solving end-of-section practice problems, and working on a mini-project integrating Python, statistics, and basic ML.', completed: false },
-                // AWS Data Engineering (19 hours + 4 hours Misc Video)
-                { week: 3, day: 20, title: 'AWS Intro & S3 Deep Dive', hours: 4, topic: 'AWS', details: 'AWS Data Analytics (Udemy): Intro to Data Engineering, AWS Ecosystem, Account Setup, S3 Basics & Deep Dive.', completed: false },
-                { week: 3, day: 21, title: 'AWS IAM & EC2 Basics', hours: 4, topic: 'AWS', details: 'AWS Data Analytics (Udemy): IAM for Security: Users, Groups, Roles, Policies. EC2 Basics: Instances, Key Pairs, Security Groups.', completed: false },
-                { week: 4, day: 22, title: 'AWS Lambda for Data Ingestion', hours: 4, topic: 'AWS', details: 'AWS Data Analytics (Udemy): Data Ingestion with AWS Lambda Functions: Hello World, Local Dev, 3rd Party Libs, S3 Integration, Scheduling via EventBridge.', completed: false },
-                { week: 4, day: 23, title: 'AWS Glue & Athena Intro', hours: 3, topic: 'AWS', details: 'AWS Data Analytics (Udemy): AWS Glue Components Overview: Crawler, Databases, Tables. Analyzing with Athena.', completed: false },
-                { week: 4, day: 24, title: 'AWS Glue Deep Dive', hours: 4, topic: 'AWS', details: 'AWS Data Analytics (Udemy): AWS Glue Catalog Deep Dive: Managing via CLI/Boto3. AWS Glue Job APIs: Running, Partitioning, Troubleshooting.', completed: false },
-                { week: 4, day: 25, title: 'Glue Bookmarks & PySpark Dev (AWS)', hours: 4, topic: 'AWS', details: 'AWS Data Analytics (Udemy): AWS Glue Job Bookmarks for Incremental Loads. PySpark Development Lifecycle with Glue.', completed: false },
-                { week: 4, day: 26, title: 'Getting Started with AWS EMR', hours: 4, topic: 'AWS', details: 'AWS Data Analytics (Udemy): Getting Started with AWS EMR Clusters: Planning, Setup, Monitoring, SSH Access.', completed: false },
-                { week: 4, day: 27, title: 'Deploying Spark on EMR & Kinesis', hours: 4, topic: 'AWS', details: 'AWS Data Analytics (Udemy): Deploying Spark Applications on EMR: Client Mode, Cluster Mode. Streaming Data with AWS Kinesis Firehose.', completed: false },
-                { week: 4, day: 28, title: 'Consuming Kinesis & DynamoDB', hours: 3, topic: 'AWS', details: 'AWS Data Analytics (Udemy): Consuming Kinesis Data with Boto3. Populating Data to AWS DynamoDB.', completed: false },
-                { week: 5, day: 29, title: 'AWS Athena Advanced', hours: 3, topic: 'AWS', details: 'AWS Data Analytics (Udemy): AWS Athena Advanced: CLI & Boto3 for Queries, Workgroups, CTAS, Partitioning.', completed: false },
-                { week: 5, day: 30, title: 'AWS Redshift Intro & Advanced', hours: 4, topic: 'AWS', details: 'AWS Data Analytics (Udemy): Getting Started with AWS Redshift. AWS Redshift: Copy Data from S3, Troubleshooting, IAM Roles, Architecture & Distribution Styles. **Complete AWS Data Analytics.**', completed: false },
-                // PySpark (6 hours)
-                { week: 5, day: 31, title: 'PySpark Tutorial', hours: 6, topic: 'PySpark', details: 'YouTube Video: PySpark Tutorial - From Zero to Pro!', completed: false },
-                // Remaining YouTube Videos & Review/Project (30 + 4 hours)
-                { week: 5, day: 32, title: 'Extended Tech Video Part 1', hours: 8, topic: 'Misc', details: 'YouTube Video: Part 1 of extensive video.', completed: false },
-                { week: 5, day: 33, title: 'Extended Tech Video Part 2', hours: 8, topic: 'Misc', details: 'YouTube Video: Part 2 of extensive video.', completed: false },
-                { week: 6, day: 34, title: 'Extended Tech Video Part 3', hours: 7, topic: 'Misc', details: 'YouTube Video: Part 3 of extensive video.', completed: false },
-                { week: 6, day: 35, title: 'Extended Tech Video Part 4', hours: 7, topic: 'Misc', details: 'YouTube Video: Part 4 of extensive video. **Complete this video.**', completed: false },
-                { week: 6, day: 36, title: 'General Tech Video', hours: 4, topic: 'Misc', details: 'YouTube Video: Specific topic related to your overall study.', completed: false },
-                // Review & Project (remaining days to fill up to 50)
-                { week: 6, day: 37, title: 'Review & Mini-Project 1', hours: 0, topic: 'Review', details: 'Review Power BI and Azure. Work on a mini-project integrating concepts from these areas.', completed: false },
-                { week: 6, day: 38, title: 'Review & Mini-Project 2', hours: 0, topic: 'Review', details: 'Review SQL and Data Science. Work on a mini-project integrating concepts from these areas.', completed: false },
-                { week: 6, day: 39, title: 'Review & Mini-Project 3', hours: 0, topic: 'Review', details: 'Review AWS Data Engineering. Work on a mini-project integrating concepts from AWS services.', completed: false },
-                { week: 6, day: 40, title: 'Full Syllabus Review & Mock Exam', hours: 0, topic: 'Review', details: 'Review all topics. If any of the courses offered practice tests (e.g., PL-300), attempt one under timed conditions.', completed: false },
-                { week: 7, day: 41, title: 'Capstone Project Planning & Setup', hours: 0, topic: 'Project', details: 'Start outlining a comprehensive capstone project that integrates skills from multiple areas.', completed: false },
-                { week: 7, day: 42, title: 'Capstone Project: Power BI & Azure Integration', hours: 0, topic: 'Project', details: 'Work on Power BI dashboards sourcing data from Azure. Implement robust data pipelines.', completed: false },
-                { week: 7, day: 43, title: 'Capstone Project: SQL & Data Science Analysis', hours: 0, topic: 'Project', details: 'Focus on in-depth SQL queries and data analysis using Python for your capstone project.', completed: false },
-                { week: 7, day: 44, title: 'Capstone Project: AWS Data Engineering', hours: 0, topic: 'Project', details: 'Implement data ingestion and processing components of your capstone project using AWS services.', completed: false },
-                { week: 7, day: 45, title: 'Capstone Project: PySpark & Big Data', hours: 0, topic: 'Project', details: 'Integrate PySpark for big data processing in your capstone project if applicable.', completed: false },
-                { week: 7, day: 46, title: 'Capstone Project: Refinement & Documentation', hours: 0, topic: 'Project', details: 'Refine your project, optimize code, ensure data accuracy, and start documenting your architecture, methodologies, and findings. Prepare it for a portfolio.', completed: false },
-                { week: 7, day: 47, title: 'Final Review & Knowledge Consolidation', hours: 0, topic: 'Review', details: 'Go over key concepts one last time, create flashcards for quick recall, and summarize your overall learning journey. Identify any lingering weak spots for future self-study.', completed: false },
-                { week: 7, day: 48, title: 'Buffer Day / Revisit Weak Areas', hours: 0, topic: 'Review', details: 'Use this day for any topics you feel less confident about, to revisit difficult exercises.', completed: false },
-                { week: 7, day: 49, title: 'Career Planning & Portfolio Refinement', hours: 0, topic: 'Project', details: 'Spend time planning your next career steps, refining your resume and portfolio based on your completed studies and projects.', completed: false },
-                { week: 7, day: 50, title: 'Final Preparation / Rest Day', hours: 0, topic: 'Review', details: 'A day for final preparation, light review, or much-needed rest after your intensive studies.', completed: false },
-            ];
+        const learningPlanData = [
+            { day: 1, phase: 1, title: 'Power BI Kickoff', subtitle: 'Udemy - PL-300', completed: false, schedule: [
+                { time: '8:00 PM - 10:30 PM', task: 'Power BI (V) - Intro, Setup, First Visuals', icon: '🎥' },
+                { time: '11:30 PM - 2:00 AM', task: 'Power BI (P/V) - Replicate visuals & continue', icon: '💻' }
+            ]},
+            ...[...Array(4)].map((_, i) => ({ day: i + 2, phase: 1, title: 'Power BI Visuals & Data Prep', subtitle: 'Udemy - PL-300', completed: false, schedule: [
+                { time: '11:00 AM - 1:00 PM', task: 'Power BI (V) - Visualizations/Data Prep', icon: '🎥' },
+                { time: '2:30 PM - 4:30 PM', task: 'Power BI (P) - Hands-on exercises', icon: '💻' },
+                { time: '4:30 PM - 5:30 PM', task: 'Power BI (R/PQ) - Review & Practice Questions', icon: '❓' },
+                { time: '6:00 PM - 7:30 PM', task: 'Power BI (V) - Continue course sections', icon: '🎥' },
+                { time: '8:00 PM - 10:00 PM', task: 'Power BI (P/PQ) - Build dashboards & more questions', icon: '💻' }
+            ]})),
+             ...[...Array(3)].map((_, i) => ({ day: i + 6, phase: 1, title: 'Power BI Modeling & Service', subtitle: 'Udemy - PL-300', completed: false, schedule: [
+                { time: '11:00 AM - 1:00 PM', task: 'Power BI (V) - DAX/Data Modeling', icon: '🎥' },
+                { time: '2:30 PM - 4:30 PM', task: 'Power BI (P) - DAX exercises', icon: '💻' },
+                { time: '4:30 PM - 5:30 PM', task: 'Power BI (R/PQ) - DAX Practice Questions', icon: '❓' },
+                { time: '6:00 PM - 7:30 PM', task: 'Power BI (V) - Power BI Service', icon: '🎥' },
+                { time: '8:00 PM - 10:00 PM', task: 'Power BI (P/PQ) - Publish reports, more questions', icon: '💻' }
+            ]})),
+             ...[...Array(2)].map((_, i) => ({ day: i + 9, phase: 1, title: 'Power BI Consolidation', subtitle: 'PL-300 Prep', completed: false, schedule: [
+                { time: 'All Day', task: 'Power BI (P/R) - Review tricky topics & work on a comprehensive project.', icon: '🚀' },
+                { time: 'Dedicated Time', task: 'Power BI (PQ) - Take a full PL-300 practice test and review.', icon: '❓' }
+            ]})),
+            { day: 11, phase: 1, title: 'SQL Beginner & Intermediate', subtitle: 'YouTube - Alex The Analyst', completed: false, schedule: [
+                { time: 'Morning/Afternoon', task: 'SQL (V/P) - Beginner level topics & extensive practice.', icon: '🎥' },
+                { time: 'Evening/Night', task: 'SQL (V/P) - Intermediate Joins, Set Operators, Functions.', icon: '💻' }
+            ]},
+            { day: 12, phase: 1, title: 'SQL Intermediate & Window Functions', subtitle: 'YouTube - Alex The Analyst', completed: false, schedule: [
+                { time: 'Morning/Afternoon', task: 'SQL (V/P) - SQL Functions, Case Statements.', icon: '🎥' },
+                { time: 'Evening/Night', task: 'SQL (V/P) - Window Functions (Basics, Aggregate, Ranking, Value).', icon: '💻' }
+            ]},
+            { day: 13, phase: 1, title: 'SQL Advanced Techniques', subtitle: 'YouTube - Alex The Analyst', completed: false, schedule: [
+                { time: 'Morning/Afternoon', task: 'SQL (V/P) - Subqueries, CTEs, Views.', icon: '🎥' },
+                { time: 'Evening/Night', task: 'SQL (V/P) - Temp Tables, Stored Procedures.', icon: '💻' }
+            ]},
+            { day: 14, phase: 1, title: 'SQL Advanced & Projects', subtitle: 'YouTube - Alex The Analyst', completed: false, schedule: [
+                { time: 'Morning/Afternoon', task: 'SQL (V/P) - Indexes, Execution Plans, Performance.', icon: '🚀' },
+                { time: 'Evening/Night', task: 'SQL (Prj) - Work on Data Warehouse and EDA projects from the video.', icon: '🚀' }
+            ]},
+            ...[...Array(3)].map((_, i) => ({ day: i + 15, phase: 1, title: 'Azure Data Fundamentals', subtitle: 'Udemy - DP-900', completed: false, schedule: [
+                { time: 'Daily', task: `Azure (V) - Day ${i+1} topics (Relational, Non-Relational, Analytics).`, icon: '🎥' },
+                { time: 'Dedicated Time', task: 'Azure (P/PQ) - Hands-on labs and DP-900 practice quizzes.', icon: '💻' },
+                { time: 'End of Day 17', task: 'Take full DP-900 practice test.', icon: '❓' }
+            ]})),
+            ...[...Array(5)].map((_, i) => ({ day: i + 18, phase: 2, title: 'Data Science Foundations', subtitle: 'Udemy - Bootcamp', completed: false, schedule: [
+                { time: 'Daily', task: 'Data Science (V) - Math, Statistics, Python Basics.', icon: '🎥' },
+                { time: 'Practice', task: 'Data Science (P) - Apply concepts with Python.', icon: '💻' },
+            ]})),
+            ...[...Array(4)].map((_, i) => ({ day: i + 23, phase: 2, title: 'Data Analysis & ML', subtitle: 'Udemy - Bootcamp', completed: false, schedule: [
+                { time: 'Daily', task: 'Data Science (V) - NumPy, Pandas, Matplotlib, scikit-learn.', icon: '🎥' },
+                { time: 'Practice', task: 'Data Science (P) - Data manipulation and building first models.', icon: '💻' },
+            ]})),
+            ...[...Array(3)].map((_, i) => ({ day: i + 27, phase: 2, title: 'Advanced ML & Deep Learning', subtitle: 'Udemy - Bootcamp', completed: false, schedule: [
+                { time: 'Daily', task: 'Data Science (V) - Advanced ML, TensorFlow.', icon: '🎥' },
+                { time: 'Practice', task: 'Data Science (Prj) - Work on real-life business cases.', icon: '🚀' },
+            ]})),
+            ...[...Array(4)].map((_, i) => ({ day: i + 30, phase: 3, title: 'AWS Basics & Data Ingestion', subtitle: 'Udemy - AWS Data Analytics', completed: false, schedule: [
+                { time: 'Daily', task: 'AWS (V) - S3, IAM, EC2, Lambda, Glue.', icon: '🎥' },
+                { time: 'Practice', task: 'AWS (P) - Hands-on in AWS console, build small ingestion pipeline.', icon: '💻' },
+            ]})),
+            ...[...Array(3)].map((_, i) => ({ day: i + 34, phase: 3, title: 'AWS EMR, Kinesis, Athena', subtitle: 'Udemy - AWS Data Analytics', completed: false, schedule: [
+                { time: 'Daily', task: 'AWS (V) - EMR, Kinesis, Athena.', icon: '🎥' },
+                { time: 'Practice', task: 'AWS (P) - Run queries and connect services.', icon: '💻' },
+            ]})),
+            ...[...Array(2)].map((_, i) => ({ day: i + 37, phase: 3, title: 'AWS Redshift', subtitle: 'Udemy - AWS Data Analytics', completed: false, schedule: [
+                { time: 'Daily', task: 'AWS (V) - Redshift basics and advanced features.', icon: '🎥' },
+                { time: 'Practice', task: 'AWS (P) - Practice copy commands and performance tuning.', icon: '💻' },
+            ]})),
+            ...[...Array(3)].map((_, i) => ({ day: i + 39, phase: 3, title: 'PySpark & PySpark ML', subtitle: 'YouTube', completed: false, schedule: [
+                { time: 'Daily', task: 'PySpark (V) - Dataframes, transformations, actions.', icon: '🎥' },
+                { time: 'Practice', task: 'PySpark (P/Prj) - Set up Spark and work on mini-projects.', icon: '🚀' },
+            ]})),
+            { day: 42, phase: 4, title: 'Buffer & Revision Day', subtitle: 'Consolidate Your Knowledge', completed: false, schedule: [
+                { time: 'Morning', task: 'Review key concepts from all courses.', icon: '📚' },
+                { time: 'Afternoon', task: 'Work on a personal capstone project combining multiple skills.', icon: '🚀' },
+                { time: 'Evening', task: 'Final review and plan next steps.', icon: '🌟' }
+            ]}
+        ];
 
-            let currentState = {
-                activeWeek: 1,
-                activeFilter: 'All',
-            };
+        const timelineGrid = document.getElementById('timeline-grid');
+        const modalContainer = document.getElementById('modal-container');
+        const modalBackdrop = document.getElementById('modal-backdrop');
+        const modalPanel = document.getElementById('modal-panel');
+        const modalTitle = document.getElementById('modal-title');
+        const modalSubtitle = document.getElementById('modal-subtitle');
+        const modalContent = document.getElementById('modal-content');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const filterContainer = document.getElementById('filters');
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
 
-            const weekTabsContainer = document.getElementById('week-tabs');
-            const dayGrid = document.getElementById('day-grid');
-            const topicFiltersContainer = document.getElementById('topic-filters');
+        let currentFilter = 'all';
+
+        const saveState = () => {
+            const state = learningPlanData.map(d => d.completed);
+            localStorage.setItem('learningPlanState', JSON.stringify(state));
+        };
+
+        const loadState = () => {
+            const savedState = JSON.parse(localStorage.getItem('learningPlanState'));
+            if (savedState && savedState.length === learningPlanData.length) {
+                learningPlanData.forEach((day, index) => {
+                    day.completed = savedState[index];
+                });
+            }
+        };
+
+        const updateProgress = () => {
+            const completedDays = learningPlanData.filter(day => day.completed).length;
+            const totalDays = learningPlanData.length;
+            const percentage = (completedDays / totalDays) * 100;
+            progressBar.style.width = `${percentage}%`;
+            progressText.textContent = `${completedDays} / ${totalDays} Days Complete`;
+        };
+
+        const renderTimeline = () => {
+            timelineGrid.innerHTML = '';
+            const filteredData = currentFilter === 'all' 
+                ? learningPlanData 
+                : learningPlanData.filter(day => day.phase == currentFilter);
+
+            filteredData.forEach(day => {
+                const card = document.createElement('div');
+                card.className = `day-card relative p-4 bg-white rounded-lg shadow-md border-2 border-transparent cursor-pointer hover:shadow-xl hover:scale-105 transition-all duration-300 ${day.completed ? 'completed' : ''}`;
+                card.dataset.day = day.day;
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <span class="text-2xl font-bold text-slate-400">${day.day}</span>
+                        <input type="checkbox" class="day-checkbox h-5 w-5 rounded text-teal-600 focus:ring-teal-500 border-slate-300" ${day.completed ? 'checked' : ''}>
+                    </div>
+                    <div class="mt-2">
+                        <h3 class="day-title font-semibold text-slate-800">${day.title}</h3>
+                        <p class="text-sm text-slate-500">${day.subtitle}</p>
+                    </div>
+                `;
+                timelineGrid.appendChild(card);
+            });
+        };
+
+        const openModal = (dayData) => {
+            modalTitle.textContent = `Day ${dayData.day}: ${dayData.title}`;
+            modalSubtitle.textContent = dayData.subtitle;
             
-            const totalHoursElement = document.getElementById('total-hours');
-            const daysCompletedElement = document.getElementById('days-completed');
-            const progressBarElement = document.getElementById('progress-bar');
-            const progressPercentElement = document.getElementById('progress-percent');
-
-            function calculateTopicHours() {
-                const topicHours = scheduleData.reduce((acc, day) => {
-                    if(day.hours > 0) {
-                        acc[day.topic] = (acc[day.topic] || 0) + day.hours;
-                    }
-                    return acc;
-                }, {});
-                return topicHours;
-            }
-
-            function renderTopicChart() {
-                const topicHours = calculateTopicHours();
-                const topicDetailsList = document.getElementById('topic-details');
-                topicDetailsList.innerHTML = '';
-                
-                const labels = Object.keys(topicHours);
-                const data = Object.values(topicHours);
-
-                const backgroundColors = [
-                    '#14b8a6', '#f97316', '#3b82f6', '#ec4899', '#8b5cf6', '#facc15', '#6b7280', '#ef4444'
-                ];
-                
-                const hoverBackgroundColors = [
-                    '#0d9488', '#ea580c', '#2563eb', '#db2777', '#7c3aed', '#eab308', '#4b5563', '#dc2626'
-                ];
-
-                labels.forEach((label, index) => {
-                    const li = document.createElement('li');
-                    li.className = 'flex items-center text-sm';
-                    li.innerHTML = `
-                        <span class="w-4 h-4 mr-3 rounded-sm" style="background-color: ${backgroundColors[index % backgroundColors.length]}"></span>
-                        <span class="font-medium text-gray-700 flex-1">${label}</span>
-                        <span class="font-semibold text-gray-900">${topicHours[label].toFixed(1)} hrs</span>
-                    `;
-                    topicDetailsList.appendChild(li);
-                });
-
-                const ctx = document.getElementById('topicChart').getContext('2d');
-                if(window.topicChartInstance) {
-                    window.topicChartInstance.destroy();
-                }
-                window.topicChartInstance = new Chart(ctx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Hours per Topic',
-                            data: data,
-                            backgroundColor: backgroundColors,
-                            hoverBackgroundColor: hoverBackgroundColors,
-                            borderColor: '#FDFBF7',
-                            borderWidth: 2,
-                            hoverOffset: 4
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        cutout: '70%',
-                        plugins: {
-                            legend: {
-                                display: false
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        let label = context.label || '';
-                                        if (label) {
-                                            label += ': ';
-                                        }
-                                        if (context.parsed !== null) {
-                                            label += context.parsed.toFixed(1) + ' hours';
-                                        }
-                                        return label;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-            }
-            
-            function renderTopicFilters() {
-                const topics = ['All', ...new Set(scheduleData.map(d => d.topic))];
-                topicFiltersContainer.innerHTML = '';
-                topics.forEach(topic => {
-                    const button = document.createElement('button');
-                    button.textContent = topic;
-                    button.dataset.topic = topic;
-                    button.className = `btn-filter py-2 px-4 rounded-full text-sm font-semibold ${currentState.activeFilter === topic ? 'active' : 'inactive'}`;
-                    button.addEventListener('click', () => {
-                        currentState.activeFilter = topic;
-                        renderDayCards();
-                        updateActiveFilterButtons();
-                    });
-                    topicFiltersContainer.appendChild(button);
-                });
-            }
-            
-            function updateActiveFilterButtons() {
-                document.querySelectorAll('#topic-filters button').forEach(button => {
-                    if (button.dataset.topic === currentState.activeFilter) {
-                        button.classList.add('active');
-                        button.classList.remove('inactive');
-                    } else {
-                        button.classList.remove('active');
-                        button.classList.add('inactive');
-                    }
-                });
-            }
-
-            function renderWeekTabs() {
-                const weeks = [...new Set(scheduleData.map(d => d.week))];
-                weekTabsContainer.innerHTML = '';
-                weeks.forEach(week => {
-                    const tab = document.createElement('button');
-                    tab.textContent = `Week ${week}`;
-                    tab.dataset.week = week;
-                    tab.className = `tab-inactive py-2 px-4 rounded-md text-sm font-semibold transition-colors duration-200 ${currentState.activeWeek == week ? 'tab-active' : ''}`;
-                    tab.addEventListener('click', () => {
-                        currentState.activeWeek = week;
-                        document.querySelectorAll('#week-tabs button').forEach(t => t.classList.remove('tab-active'));
-                        tab.classList.add('tab-active');
-                        renderDayCards();
-                    });
-                    weekTabsContainer.appendChild(tab);
-                });
-                weekTabsContainer.querySelector(`[data-week='${currentState.activeWeek}']`).classList.add('tab-active');
-                weekTabsContainer.querySelector(`[data-week='${currentState.activeWeek}']`).classList.remove('tab-inactive');
-            }
-
-            function renderDayCards() {
-                dayGrid.innerHTML = '';
-                let filteredData = scheduleData;
-
-                if (currentState.activeFilter !== 'All') {
-                    filteredData = scheduleData.filter(day => day.topic === currentState.activeFilter);
-                } else {
-                    filteredData = scheduleData.filter(day => day.week == currentState.activeWeek);
-                }
-
-                if (filteredData.length === 0) {
-                    dayGrid.innerHTML = `<div class="col-span-full text-center py-10 text-gray-500">No sessions for "${currentState.activeFilter}" in Week ${currentState.activeWeek}. Try viewing 'All' topics.</div>`;
-                    return;
-                }
-
-                filteredData.forEach(day => {
-                    const card = document.createElement('div');
-                    card.className = `day-card p-4 rounded-lg shadow-sm cursor-pointer ${day.completed ? 'completed' : ''}`;
-                    card.dataset.day = day.day;
-
-                    card.innerHTML = `
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="text-xs text-gray-500">Day ${day.day}</p>
-                                <h3 class="font-bold text-md text-gray-800">${day.title}</h3>
-                                <p class="text-xs font-semibold text-teal-600 mt-1">${day.topic} ${day.hours > 0 ? `• ${day.hours} hrs` : ''}</p>
-                            </div>
-                            <input type="checkbox" data-day="${day.day}" class="h-5 w-5 rounded border-gray-300 text-teal-600 focus:ring-teal-500" ${day.completed ? 'checked' : ''}>
+            let scheduleHtml = '<ul class="space-y-3">';
+            dayData.schedule.forEach(item => {
+                scheduleHtml += `
+                    <li class="flex items-start">
+                        <span class="mr-3 text-xl">${item.icon}</span>
+                        <div>
+                            <p class="font-semibold">${item.time}</p>
+                            <p class="text-slate-600">${item.task}</p>
                         </div>
-                        <div class="day-card-details mt-2 pt-2 border-t border-gray-200">
-                            <p class="text-sm text-gray-600">${day.details}</p>
-                        </div>
-                    `;
-                    
-                    card.querySelector('h3').addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        card.classList.toggle('expanded');
-                    });
-                    
-                    card.querySelector('input[type="checkbox"]').addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        toggleDayCompletion(day.day);
-                    });
-
-                    dayGrid.appendChild(card);
-                });
-            }
-
-            function toggleDayCompletion(dayNumber) {
-                const day = scheduleData.find(d => d.day === dayNumber);
-                if (day) {
-                    day.completed = !day.completed;
-                    const card = dayGrid.querySelector(`[data-day='${dayNumber}']`);
-                    if(card) card.classList.toggle('completed');
-                    updateProgress();
-                }
-            }
+                    </li>
+                `;
+            });
+            scheduleHtml += '</ul>';
+            modalContent.innerHTML = scheduleHtml;
             
-            function updateProgress() {
-                const completedDays = scheduleData.filter(d => d.completed).length;
-                const totalDays = 50;
-                const percentage = totalDays > 0 ? (completedDays / totalDays) * 100 : 0;
+            modalContainer.classList.remove('hidden');
+            setTimeout(() => {
+                modalBackdrop.classList.remove('opacity-0');
+                modalPanel.classList.remove('opacity-0', 'scale-95');
+            }, 10);
+        };
 
-                daysCompletedElement.textContent = `${completedDays}/${totalDays}`;
-                progressBarElement.style.width = `${percentage}%`;
-                progressPercentElement.textContent = `${Math.round(percentage)}%`;
-            }
+        const closeModal = () => {
+            modalPanel.classList.add('opacity-0', 'scale-95');
+            modalBackdrop.classList.add('opacity-0');
+            setTimeout(() => {
+                modalContainer.classList.add('hidden');
+            }, 300);
+        };
+        
+        timelineGrid.addEventListener('click', (e) => {
+            const card = e.target.closest('.day-card');
+            if (!card) return;
 
-            function init() {
-                renderWeekTabs();
-                renderTopicFilters();
-                renderTopicChart();
-                renderDayCards();
+            const dayIndex = parseInt(card.dataset.day, 10) - 1;
+
+            if (e.target.type === 'checkbox') {
+                learningPlanData[dayIndex].completed = e.target.checked;
+                card.classList.toggle('completed', e.target.checked);
+                saveState();
                 updateProgress();
+            } else {
+                openModal(learningPlanData[dayIndex]);
             }
-
-            init();
         });
+
+        filterContainer.addEventListener('click', (e) => {
+            if(e.target.tagName === 'BUTTON') {
+                currentFilter = e.target.dataset.phase;
+                document.querySelectorAll('.phase-btn').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                renderTimeline();
+            }
+        });
+
+        closeModalBtn.addEventListener('click', closeModal);
+        modalBackdrop.addEventListener('click', closeModal);
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            loadState();
+            renderTimeline();
+            updateProgress();
+        });
+
     </script>
 </body>
 </html>
+
